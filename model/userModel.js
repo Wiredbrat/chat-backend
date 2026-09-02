@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken';
+
 const userSchema = mongoose.Schema({
   username: {
     type: String,
@@ -9,9 +10,14 @@ const userSchema = mongoose.Schema({
     minLength: [3, "Username must be atleast 3 characters long."],
     index: true
   },
+  email: {
+    type: String,
+    required: true,
+  },
   password: {
     type: String,
-    required: true
+    required: true,
+    select: false 
   },
   chatRooms: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -20,14 +26,16 @@ const userSchema = mongoose.Schema({
 })
 
 
-userSchema.pre('save', async (next) => {
-  if (!this.isModified('password')) return next();
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
   try {
     const salt = await bcrypt.genSalt(12);
     const hash = await bcrypt.hash(this.password, salt);
-    next();
+
+    this.password = hash;
   } catch (error) {
-    next(error);
+    console.log(error) 
+    throw error;
   }
 })
 
@@ -52,4 +60,6 @@ userSchema.statics.verifyAuthToken = function (token) {
     process.env.JWT_SECRET,
   );
 };
-export default User = mongoose.model('User', chatSchema);
+
+const User = mongoose.model('User', userSchema);
+export default User;

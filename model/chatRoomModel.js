@@ -13,7 +13,7 @@ const chatRoomSchema = mongoose.Schema({
     validate: [v => v.length > 1],
   },
   isGroup: {
-    type: true,
+    type: Boolean,
     default: false
   },
   createdBy: {
@@ -26,11 +26,9 @@ const chatRoomSchema = mongoose.Schema({
       ref: "User",
     }],
     validate: [v => v.length > 0],
-  },
-  chats: [{
-    
-  }]
+  }
 
 }, {timestamps: true})
 
-export default ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
+const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
+export default ChatRoom;
