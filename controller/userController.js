@@ -1,7 +1,13 @@
+import mongoose from "mongoose";
+import ChatRoom from "../model/chatRoomModel.js";
 import User from "../model/userModel.js";
 import redis from "../server.js";
-import { isString, isStringMulti, isValidEmailFormat } from "../utils/validator.js";
-
+import {
+  isString,
+  isStringMulti,
+  isValidEmailFormat,
+} from "../utils/validator.js";
+import Chat from "../model/chatModel.js";
 
 export async function addUser(req, res) {
   try {
@@ -13,7 +19,7 @@ export async function addUser(req, res) {
       return res.status(400).json({
         success: false,
         message: `Enter a valid ${invalidItem}.`,
-      })
+      });
     }
 
     const validEmail = isValidEmailFormat(email);
@@ -22,7 +28,7 @@ export async function addUser(req, res) {
       return res.status(400).json({
         success: false,
         message: `Enter a valid email.`,
-      })
+      });
     }
 
     const existingUser = await User.findOne({ username });
@@ -31,74 +37,72 @@ export async function addUser(req, res) {
       return res.status(409).json({
         success: false,
         message: `Username is already taken.`,
-      })
+      });
     }
 
     const newUser = await User.create({
       username,
       email,
-      password
-    })
+      password,
+    });
 
     // add email varification service here
 
     return res.status(201).json({
       success: true,
       message: `User created.`,
-    })
-
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
 }
-
 
 export async function loginUser(req, res) {
   try {
     const { username, password } = req.body;
-  
+
     const { valid, invalidItem } = isStringMulti(username, password);
-  
+
     if (!valid) {
       return res.status(400).json({
         success: false,
         message: `Enter valid ${invalidItem}.`,
-      })
+      });
     }
-  
+
     const existingUser = await User.findOne({ username }).select("+password");
-  
+
     if (!existingUser) {
       return res.status(404).json({
         success: false,
         message: `User not found.`,
-      })
+      });
     }
-  
+
     const isValidPassword = await existingUser.validatePassword(password);
-  
-    if(!isValidPassword) {
+
+    if (!isValidPassword) {
       return res.status(401).json({
         success: false,
         message: `Password didn't match.`,
-      })
+      });
     }
-  
+
     const newToken = await existingUser.generateAuthToken();
-    
-    if(!newToken) {
+
+    if (!newToken) {
       return res.status(500).json({
         success: false,
-        message: 'Error while generating token.',
-      })
+        message: "Error while generating token.",
+      });
     }
-    res.cookie('authToken', newToken, {
+    res.cookie("authToken", newToken, {
       httpOnly: true,
-      // secure: true, 
-      sameSite: 'lax',
+      // secure: true,
+      sameSite: "lax",
       // maxAge: 360000
     });
 
@@ -106,12 +110,12 @@ export async function loginUser(req, res) {
       success: true,
       message: `Token generated.`,
       // data: responseData
-    }) 
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
 }
 
@@ -119,9 +123,9 @@ export async function logout(req, res) {
   try {
     const { _id } = req.user;
     const { authToken } = req.cookie;
-  
+
     // const existingUser = await User.findOne({ _id });
-  
+
     // if (!existingUser) {
     //   return res.status(404).json({
     //     success: false,
@@ -133,24 +137,22 @@ export async function logout(req, res) {
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const timeLeft = decoded.exp - nowInSeconds;
 
-    if(timeLeft > 0) {
-      redis.setEx(`blacklist:${token}`, timeLeft, 'revoked');
+    if (timeLeft > 0) {
+      redis.setEx(`blacklist:${token}`, timeLeft, "revoked");
     }
-    res.clearCookie('authToken');
+    res.clearCookie("authToken");
 
     return res.status(201).json({
       success: true,
       message: `User logged out`,
-    })
-
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
 }
-
 
 export async function getUserByUsername(req, res) {
   try {
@@ -161,56 +163,212 @@ export async function getUserByUsername(req, res) {
     if (!string) {
       return res.status(400).json({
         success: false,
-        message: "Enter a valid string."
-      })
+        message: "Enter a valid string.",
+      });
     }
 
-    const user = await User.find({ username: { $regex: username, $options: "i" } });
+    const user = await User.find({
+      username: { $regex: username, $options: "i" },
+    }).select("-chatRooms -email");
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found."
-      })
+        message: "User not found.",
+      });
     }
 
     return res.status(200).json({
       success: true,
-      message: user.length > 0 ? "User found.": "User not found.",
-      data: user
-    })
+      message: user.length > 0 ? "User found." : "User not found.",
+      data: user,
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
-
 }
 
 export async function getUser(req, res) {
   try {
     const { _id } = req.user;
 
-    const user = await User.find({_id});
+    const user = await User.find({ _id }).populate("chatRooms");
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found."
-      })
+        message: "User not found.",
+      });
     }
 
     return res.status(200).json({
       success: true,
       message: "User found.",
-      data: user
-    })
+      data: user,
+    });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: error.message,
-    })
+    });
   }
+}
 
+export async function getChatRooms(req, res) {
+  try {
+    const { _id } = req.user;
+
+    const pipeline = [
+      { $match: { participants: _id } },
+      {
+        $lookup: {
+          from: "users",
+          localField: "participants",
+          foreignField: "_id",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                username: 1,
+              },
+            },
+          ],
+          as: "participants",
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdBy",
+          foreignField: "_id",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                username: 1,
+              },
+            },
+          ],
+          as: "createdBy",
+        },
+      },
+      { $unwind: "$createdBy" },
+      {
+        $project: {
+          participants: {
+            $filter: {
+              input: "$participants",
+              as: "user",
+              cond: {
+                $ne: ["$$user._id", new mongoose.Types.ObjectId(_id)],
+              },
+            },
+          },
+          createdBy: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          isGroup: 1,
+        },
+      },
+    ];
+
+    const chatRooms = await ChatRoom.aggregate(pipeline);
+
+    if (!chatRooms) {
+      return res.status(404).json({
+        success: false,
+        message: "Chats not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Chats found.",
+      data: chatRooms,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function getUserChats(req, res) {
+  try {
+    const { chatRoomId } = req.params;
+    const { before } = req.query;
+    const { _id } = req.user;
+    console.log(chatRoomId)
+    if (
+      !chatRoomId ||
+      chatRoomId === undefined ||
+      !mongoose.isValidObjectId(chatRoomId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid chat room ID.",
+      });
+    }
+
+    const match = { chatRoomId: new mongoose.Types.ObjectId(chatRoomId) };
+
+    if (before) {
+      match.createdAt = {};
+      if (isNaN(Date.parse(before))) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid date.",
+        });
+      } else {
+        match.createdAt = { $lt: new Date(before) };
+      }
+    }
+
+    const pipeline = [
+      { $match: match },
+      { $sort: { updatedAt: -1 } },
+      { $limit: 1 },
+    ];
+
+    const chat = await Chat.aggregate(pipeline);
+    console.log(chat);
+    if (!chat) {
+      return res.status(404).json({
+        success: false,
+        message: "Chats not found.",
+      });
+    }
+
+    let moreChatExists = false;
+    if (chat?.length >= 1) {
+      moreChatExists = await Chat.exists({
+        chatRoomId: chat[0]?.chatRoomId,
+        createdAt: {
+          $lt: chat[0]?.createdAt,
+        },
+      });
+    }
+    // console.log("more chat",moreChatExists);
+
+    return res.status(200).json({
+      success: true,
+      message: "Chats found.",
+      data: {
+        chatRoomId: chat[0]?.chatRoomId,
+        messages: chat[0]?.messages,
+        createdAt: chat[0]?.createdAt,
+        updatedAt: chat[0]?.updatedAt,
+        hasMore: Boolean(moreChatExists),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
 }

@@ -1,9 +1,16 @@
 import mongoose from "mongoose";
 
 const chatRoomSchema = mongoose.Schema({
-  roomName: { 
-    type: String, 
-    required: true
+  isGroup: {
+    type: Boolean,
+    default: false
+  },
+  roomName: {
+    type: String,
+    trim: true,
+    isRequired: function () {
+      return this.isGroup;  
+    }
   },
   participants: {
     type: [{
@@ -11,10 +18,6 @@ const chatRoomSchema = mongoose.Schema({
       ref: "User",
     }],
     validate: [v => v.length > 1],
-  },
-  isGroup: {
-    type: Boolean,
-    default: false
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -25,10 +28,20 @@ const chatRoomSchema = mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     }],
-    validate: [v => v.length > 0],
+    validate: {
+      validator: function (v) {
+        // Only require groupAdmin for groups
+        if (this.isGroup) {
+          return Array.isArray(v) && v.length > 0;
+        }
+
+        return true;
+      },
+      message: "A group must have at least one group admin."
+    }
   }
 
-}, {timestamps: true})
+}, { timestamps: true })
 
 const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);
 export default ChatRoom;

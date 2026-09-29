@@ -14,7 +14,7 @@ export async function createRoom(req, res) {
       })
     }
 
-    const receiver = await User.findById(receiverId)
+    const receiver = await User.findById(receiverId);
 
     if (!receiverId) {
       return res.status(404).json({
@@ -25,8 +25,9 @@ export async function createRoom(req, res) {
 
     const senderId = req.user._id;
     const existingRoom = await ChatRoom.findOne({
+      isGroup: false,
       participants: { $all: [senderId, receiver._id] }
-    })
+    });
 
     if (existingRoom) {
       return res.status(409).json({
@@ -38,12 +39,12 @@ export async function createRoom(req, res) {
     const createChatRoom = await ChatRoom.create({
       participants: [receiver._id, senderId],
       createdBy: senderId,
-    })
+    });
 
     const sender = await User.findById(senderId);
 
-    sender.ChatRoom.push(createChatRoom._id);
-    receiver.ChatRoom.push(createChatRoom._id);
+    sender?.chatRooms?.push(createChatRoom._id);
+    receiver?.chatRooms?.push(createChatRoom._id);
 
     await sender.save();
     await receiver.save();
@@ -61,8 +62,6 @@ export async function createRoom(req, res) {
     })
   }
 }
-
-
 
 export async function getChat() {
   const { chatId } = req.params;
@@ -97,3 +96,4 @@ export async function getChat() {
     data: chat
   })
 }
+
