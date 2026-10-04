@@ -11,20 +11,25 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon server.js"
+    "start": "nodemon server.js",
+    "redis": "sudo systemctl start redis"
   },
   "dependencies": {
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^6.3.4",
     "cookie": "^2.0.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.2",
     "multer": "^2.2.0",
     "nodemon": "^3.1.14",
+    "rate-limit-redis": "^6.0.1",
     "redis": "^6.2.1",
     "ws": "^8.21.3"
   },
