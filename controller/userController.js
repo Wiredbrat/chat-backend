@@ -91,19 +91,28 @@ export async function loginUser(req, res) {
       });
     }
 
-    const newToken = await existingUser.generateAuthToken();
+    const newAccessToken = await existingUser.generateAccessToken();
+    const newRefreshToken = await existingUser.generateRefreshToken();
 
-    if (!newToken) {
+    if (!newAccessToken || !newRefreshToken) {
       return res.status(500).json({
         success: false,
         message: "Error while generating token.",
       });
     }
-    res.cookie("authToken", newToken, {
+    res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
       // secure: true,
       sameSite: "lax",
-      // maxAge: 360000
+      // maxAge: 2 * 24 * 60 * 60 * 1000
+      maxAge: 20 * 1000
+    });
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      // secure: true,
+      sameSite: "lax",
+      maxAge: 15 * 24 * 60 * 60 * 1000
     });
 
     return res.status(201).json({
@@ -122,7 +131,7 @@ export async function loginUser(req, res) {
 export async function logout(req, res) {
   try {
     const { _id } = req.user;
-    const { authToken } = req.cookie;
+    const { accessToken, refreshToken } = req.cookie;
 
     // const existingUser = await User.findOne({ _id });
 
@@ -133,14 +142,16 @@ export async function logout(req, res) {
     //   })
     // }
 
-    const decoded = await User.verifyAuthToken;
+    const decoded = await User.verifyToken(accessToken);
     const nowInSeconds = Math.floor(Date.now() / 1000);
     const timeLeft = decoded.exp - nowInSeconds;
 
     if (timeLeft > 0) {
-      redis.setEx(`blacklist:${token}`, timeLeft, "revoked");
+      redis.setEx(`blacklist:${accessToken}`, timeLeft, "revoked");
+      redis.setEx(`blacklist:${refreshToken}`, timeLeft, "revoked");
     }
-    res.clearCookie("authToken");
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
 
     return res.status(201).json({
       success: true,
@@ -302,7 +313,7 @@ export async function getUserChats(req, res) {
     const { chatRoomId } = req.params;
     const { before } = req.query;
     const { _id } = req.user;
-    console.log(chatRoomId)
+    console.log(chatRoomId);
     if (
       !chatRoomId ||
       chatRoomId === undefined ||
@@ -334,13 +345,28 @@ export async function getUserChats(req, res) {
       { $limit: 1 },
     ];
 
+    let chatInBuffer;
+
     const chat = await Chat.aggregate(pipeline);
-    console.log(chat);
-    if (!chat) {
+
+    if (!before) {
+      const key = `chat:buffer:${chatRoomId}`;
+      chatInBuffer = await redis.lRange(key, 0, -1);
+    }
+
+    if (!chat && !chatInBuffer) {
       return res.status(404).json({
         success: false,
         message: "Chats not found.",
       });
+    }
+
+    let unsavedMessages = [];
+    if (chatInBuffer && chat) {
+      unsavedMessages = chatInBuffer.map((chat) => JSON.parse(chat));
+      if (chat) {
+        chat[0]?.messages.push(...unsavedMessages);
+      }
     }
 
     let moreChatExists = false;
@@ -354,12 +380,15 @@ export async function getUserChats(req, res) {
     }
     // console.log("more chat",moreChatExists);
 
+    // console.log("chat in buffer: ",chatInBuffer)
+    // console.log(messages)
+
     return res.status(200).json({
       success: true,
       message: "Chats found.",
       data: {
         chatRoomId: chat[0]?.chatRoomId,
-        messages: chat[0]?.messages,
+        messages: chat[0]?.messages || unsavedMessages,
         createdAt: chat[0]?.createdAt,
         updatedAt: chat[0]?.updatedAt,
         hasMore: Boolean(moreChatExists),
