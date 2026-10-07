@@ -88,8 +88,8 @@ const authMiddleware = async (req, res, next) => {
 
       res.cookie("accessToken", newAccessToken, {
         httpOnly: true,
+        secure: !process.env.DEVELOPEMENT,
         sameSite: "lax",
-        secure: false,
         maxAge: 15 * 60 * 1000,
       });
     }

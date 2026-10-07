@@ -102,15 +102,15 @@ export async function loginUser(req, res) {
     }
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      // secure: true,
+      secure: !process.env.DEVELOPEMENT,
       sameSite: "lax",
       // maxAge: 2 * 24 * 60 * 60 * 1000
-      maxAge: 20 * 1000
+      maxAge: 15 * 60 * 1000
     });
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      // secure: true,
+      secure: !process.env.DEVELOPEMENT,
       sameSite: "lax",
       maxAge: 15 * 24 * 60 * 60 * 1000
     });
