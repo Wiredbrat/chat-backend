@@ -15,6 +15,7 @@
     "redis": "sudo systemctl start redis"
   },
   "dependencies": {
+    "@upstash/redis": "^1.39.0",
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^6.3.4",
