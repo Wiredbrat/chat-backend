@@ -16,7 +16,7 @@ const messageSchema = new mongoose.Schema(
       ref: "User",
     },
     receiver: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: [mongoose.Schema.Types.ObjectId],
       ref: "User",
     },
     createdAt: {
@@ -41,7 +41,7 @@ const chatSchema = mongoose.Schema({
 
 }, { timestamps: true })
 
-chatSchema.index({ chatRoomId: 1, createdAt: -1 });
+chatSchema.index({ chatRoomId: 1, createdAt: -1, "messages.createdAt": -1,});
 
 const Chat = mongoose.model('Chat', chatSchema);
 export default Chat;
