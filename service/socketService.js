@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { parseCookie } from 'cookie';
 import redis from '../server.js';
-import { bufferMessage } from './chatService.js';
+import { bufferMessage, lastMessageOfRoom } from './chatService.js';
 import { getChatRooms } from '../controller/userController.js';
 import ChatRoom from '../model/chatRoomModel.js';
 import mongoose from 'mongoose';
@@ -15,7 +15,7 @@ const MESSAGE_TYPES = {
 }
 
 const port = process.env.SOCKET_PORT
-const ws = new WebSocketServer({ port: port || 8001 });
+const ws = new WebSocketServer({ port: port || 3000 });
 const onlineClients = new Map();
 const socketKey = "user:socket:";
 
@@ -113,15 +113,32 @@ async function sendMessage(payload, senderId) {
   }
 
   const messageToSave = {
-    _id: crypto.randomUUID(),
     receiver: payload.receiverId,
     sender: senderId,
     message: payload?.message,
     createdAt: new Date().toISOString(),
   }
 
-  await getClientsSocketAndSendMessage(receiverId, outgoingMessage);
+  const lastMessage = {
+    roomId: payload.roomId,
+    // receiver: payload.receiverId,
+    sender: senderId,
+    message: payload?.message,
+    timestamp: new Date().toISOString(),
+  }
+
+
+  console.log("receiverID: ", receiverId)
   bufferMessage(payload.roomId, messageToSave);
+  lastMessageOfRoom(payload.roomId, lastMessage);
+
+  if (!receiverId) {
+    console.error("Receiver id not found")
+    return;
+  }
+  for (const id of receiverId) {
+    await getClientsSocketAndSendMessage(id, outgoingMessage);
+  }
 }
 
 
@@ -129,7 +146,6 @@ async function getClientsSocketAndSendMessage(receiverId, message) {
   const receiverSocket = await redis.lRange(`${socketKey}${receiverId}`, 0, -1);
   if (receiverSocket.length < 1) {
     console.log("RECEIVER SOCKET NOT FOUND: ", receiverId);
-    
     return;
   }
 

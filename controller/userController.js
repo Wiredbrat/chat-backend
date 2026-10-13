@@ -11,7 +11,7 @@ import Chat from "../model/chatModel.js";
 
 export async function addUser(req, res) {
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, avatar } = req.body;
 
     const { valid, invalidItem } = isStringMulti(username, password);
 
@@ -44,6 +44,7 @@ export async function addUser(req, res) {
       username,
       email,
       password,
+      avatar,
     });
 
     // add email varification service here
@@ -244,6 +245,7 @@ export async function getChatRooms(req, res) {
               $project: {
                 _id: 1,
                 username: 1,
+                avatar: 1,
               },
             },
           ],
@@ -282,6 +284,7 @@ export async function getChatRooms(req, res) {
           createdAt: 1,
           updatedAt: 1,
           isGroup: 1,
+          roomName: 1
         },
       },
     ];
@@ -295,10 +298,15 @@ export async function getChatRooms(req, res) {
       });
     }
 
+    const keys = chatRooms.map(room => `chat:lastMessage:${room._id}`);
+
+    const lastMessages = keys.length ? await redis.mGet(keys) : [];
+
     return res.status(200).json({
       success: true,
       message: "Chats found.",
       data: chatRooms,
+      lastMessages: lastMessages
     });
   } catch (error) {
     return res.status(500).json({

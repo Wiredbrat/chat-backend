@@ -16,7 +16,7 @@ export async function createRoom(req, res) {
 
     const receiver = await User.findById(receiverId);
 
-    if (!receiverId) {
+    if (!receiver) {
       return res.status(404).json({
         success: false,
         message: "User not found."
@@ -63,6 +63,64 @@ export async function createRoom(req, res) {
   }
 }
 
+
+export async function createGroup(req, res) {
+  try {
+    const { receiverId, roomName } = req.body;
+
+    if (!Array.isArray(receiverId) || !receiverId.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid receiver ID."
+      })
+    }
+
+    const receivers = await User.find({
+      _id: {$in: receiverId}
+    });
+
+    if (!receivers || !receivers.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      })
+    }
+
+    const senderId = req.user._id;
+
+    const receiversId = receivers.map(r => r._id);
+    const createChatRoom = await ChatRoom.create({
+      roomName: roomName,
+      participants: [senderId, ...receiversId],
+      isGroup: true,
+      groupAdmin: senderId,
+      createdBy: senderId,
+    });
+
+    const sender = await User.findById(senderId);
+    await sender.save();
+
+    sender?.chatRooms?.push(createChatRoom._id);
+    for (const receiver of receivers) {
+      receiver?.chatRooms?.push(createChatRoom._id);
+      await receiver.save();
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "New group created.",
+      data: createChatRoom
+    })
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+}
+
+
 export async function getChat() {
   const { chatId } = req.params;
   const { _id } = req.user;
@@ -96,4 +154,3 @@ export async function getChat() {
     data: chat
   })
 }
-

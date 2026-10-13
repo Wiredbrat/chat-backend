@@ -20,6 +20,15 @@ export async function claimChatBatch(chatRoomId) {
   }
 }
 
+export async function lastMessageOfRoom(roomId, message) {
+  try {
+    const key = `chat:lastMessage:${roomId}`;
+    await redis.set(key, JSON.stringify(message));
+  } catch (error) {
+    console.error("Error: ", error.message)
+  }
+}
+
 export async function bufferMessage(roomId, message) {
   // console.log("bufferMessage run>>>>>>>>>>>>>>>>>>>>>>");
 
@@ -45,7 +54,7 @@ export async function bufferMessage(roomId, message) {
         );
 
       } catch (error) {
-        console.error("Queue Error: ", error)
+        console.error("Queue Error: ", error.message)
       }
 
     }
@@ -56,13 +65,13 @@ export async function saveMessagesToDB(roomId, messageBatch) {
   console.log("saveMessagesToDB run>>>>>>>>>>>>>>>>>>>>>>");
 
   try {
-    const messeges = await Chat.create({
+    await Chat.create({
       chatRoomId: roomId,
       messages: messageBatch
     });
     console.log("saveMessagesToDB create end >>>>>>>>>>>>>>>>>>>>>>");
 
   } catch (error) {
-    console.log("Error while saving chats", error);
+    console.log("Error while saving chats", error.message);
   }
 }
