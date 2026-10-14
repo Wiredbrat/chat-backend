@@ -1,6 +1,8 @@
 import { Worker } from "bullmq";
 import redis from "../server.js";
 import { saveMessagesToDB } from "../service/chatService.js";
+import redisConnection from "../database/redisConnection";
+
 import mongoose from "mongoose";
 
 
@@ -22,17 +24,14 @@ const chatWorker = new Worker('chat-message-flush',
 
       await saveMessagesToDB(roomId, messageBatch);
       await redis.del(processingId);
-      
+
     } catch (error) {
       console.log("Worker Errror", error);
       throw error;
     }
   },
   {
-    connection: {
-      host: 'localhost',
-      port: 6379,
-    }
+    redisConnection
   }
 )
 

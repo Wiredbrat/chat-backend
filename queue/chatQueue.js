@@ -1,8 +1,4 @@
 import { Queue } from "bullmq";
+import redisConnection from "../database/redisConnection";
 
-export const chatQueue = new Queue("chat-message-flush", {
-  connection: {
-    host: "localhost",
-    port: 6379,
-  },
-});
+export const chatQueue = new Queue("chat-message-flush", { redisConnection });

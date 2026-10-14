@@ -1,23 +1,22 @@
-import { Redis } from '@upstash/redis'
+import { createClient } from "redis";
+
 let redisClient = null;
 
-(async function initiateRedis () {
-  redisClient = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    })
+(async function initiateRedis() {
+  redisClient = createClient({
+    url: process.env.REDIS_URL||"redis://127.0.0.1:6379",
+  });
 
-  redisClient.on('error', (err) => console.error('Redis Client Error', err));
-  redisClient.on('connect', () => console.log('Redis Client Connected'));
+  redisClient.on("error", (err) => console.error("Redis Client Error", err));
+  redisClient.on("connect", () => console.log("Redis Client Connected"));
 
   // Establish connection
   await redisClient.connect();
-
 })();
 
 export const getRedisClient = () => {
   if (!redisClient) {
-    throw new Error('Redis client has not been initialized yet!');
+    throw new Error("Redis client has not been initialized yet!");
   }
   return redisClient;
 };
