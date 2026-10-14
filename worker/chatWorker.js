@@ -31,7 +31,7 @@ const chatWorker = new Worker('chat-message-flush',
     }
   },
   {
-    redisConnection
+    connection: redisConnection
   }
 )
 
