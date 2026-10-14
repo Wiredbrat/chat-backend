@@ -1,12 +1,11 @@
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocket } from 'ws';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
-import { parseCookie } from 'cookie';
 import redis from '../server.js';
 import { bufferMessage, lastMessageOfRoom } from './chatService.js';
-import { getChatRooms } from '../controller/userController.js';
 import ChatRoom from '../model/chatRoomModel.js';
 import mongoose from 'mongoose';
+import { ws } from "../socketServer.js";
+
 
 const MESSAGE_TYPES = {
   sendMessage: 'send_message',
@@ -14,8 +13,6 @@ const MESSAGE_TYPES = {
   presence: 'presence',
 }
 
-const port = process.env.SOCKET_PORT
-const ws = new WebSocketServer({ port: port || 3000 });
 const onlineClients = new Map();
 const socketKey = "user:socket:";
 
@@ -24,7 +21,8 @@ const heartbeatInterval = setInterval(async() => {
   for (const socket of clients) {
     if (socket.isAlive === false) {
       console.log("Terminating dead WebSocket");
-      return socket.terminate();
+      socket.terminate();
+      continue;
     } else if (socket.isAlive === true) {
       console.log("WebSocket is alive: ", socket?.userId);
       await sendPresence(socket.userId, "online");
@@ -38,23 +36,14 @@ const heartbeatInterval = setInterval(async() => {
 
 export function socketConnection() {
   ws.on('connection', async (socket, req) => {
+    const user = req.user;
+
     socket.isAlive = true;
     socket.on('pong', () => {
       socket.isAlive = true;
     });
 
-    const cookies = parseCookie(req?.headers?.cookie || "") || {};
-    const token = cookies?.accessToken;
-
-    if (!token) {
-      console.log("No access token in WebSocket connection");
-      socket.close(1008, "Authentication required");
-      return;
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-    // console.log(decoded);
-    socket.userId = decoded._id;
+    socket.userId = user._id;
 
     const clientId = crypto.randomUUID();
     onlineClients.set(clientId, socket);
@@ -129,8 +118,8 @@ async function sendMessage(payload, senderId) {
 
 
   console.log("receiverID: ", receiverId)
-  bufferMessage(payload.roomId, messageToSave);
-  lastMessageOfRoom(payload.roomId, lastMessage);
+  await bufferMessage(payload.roomId, messageToSave);
+  await lastMessageOfRoom(payload.roomId, lastMessage);
 
   if (!receiverId) {
     console.error("Receiver id not found")
