@@ -1,7 +1,7 @@
 import { Worker } from "bullmq";
 import redis from "../server.js";
 import { saveMessagesToDB } from "../service/chatService.js";
-import redisConnection from "../database/redisConnection";
+import redisConnection from "../database/redisConnection.js";
 
 import mongoose from "mongoose";
 
