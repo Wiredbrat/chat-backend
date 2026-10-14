@@ -18,15 +18,9 @@ const app = express();
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // Allows requests with no origin (like mobile apps, curl, or Postman)
-      if (!origin) return callback(null, true);
-
-      // Dynamically approves the incoming website origin
-      callback(null, origin);
-    },
+    origin: "https://nimbuspro.vercel.app",
     credentials: true,
-  }),
+  })
 );
 
 const limiter = rateLimit({
