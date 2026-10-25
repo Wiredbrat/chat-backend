@@ -97,7 +97,7 @@ socketConnection();
     await connectDB();
     const address = server.address();
     server.listen(PORT, () => {
-      console.log(`server is running on`, address ||`http://localhost:${PORT}`);
+      console.log(`server is running on`, address);
     });
   } catch (error) {
     console.log("ERROR WHILE SERVER START >>>", error.message);
