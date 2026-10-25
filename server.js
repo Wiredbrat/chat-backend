@@ -13,13 +13,13 @@ import "./worker/chatWorker.js";
 import { ws } from "./socketServer.js";
 import jwt from "jsonwebtoken";
 import { parseCookie } from 'cookie';
-
+import http from "http";
 
 configDotenv();
 
 const PORT = process.env.PORT;
 const app = express();
-
+const server = http.createServer(app);
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
@@ -56,10 +56,10 @@ app.use("/api/v1", router);
 app.use("/api/v1/chat", chatRouter);
 
 // connection upgrade
-app.on("upgrade", (request, socket, head) => {
+server.on("upgrade", (request, socket, head) => {
   const origin = request.headers.origin;
 
-  if (!origin || origin === process.env.FRONTEND_URL) {
+  if (!origin || origin !== process.env.FRONTEND_URL) {
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
     socket.destroy();
     return;
@@ -80,7 +80,7 @@ app.on("upgrade", (request, socket, head) => {
     request.user = decoded;
 
     ws.handleUpgrade(request, socket, head, (websocket) => {
-      websocket.userId = user.id;
+      websocket.userId = decoded._id;
       ws.emit("connection", websocket, request);
     });
   } catch {
@@ -95,7 +95,7 @@ socketConnection();
 (async function startServer() {
   try {
     await connectDB();
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`server is running on http://localhost:${PORT}`);
     });
   } catch (error) {

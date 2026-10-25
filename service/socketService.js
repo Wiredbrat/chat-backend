@@ -50,8 +50,8 @@ export function socketConnection() {
 
 
     socket.send(JSON.stringify({ id: clientId }));
-    const existingSockets = await redis.lLen(`${socketKey}${decoded._id}`);
-    await redis.rPush(`${socketKey}${decoded._id}`, clientId);
+    const existingSockets = await redis.lLen(`${socketKey}${user._id}`);
+    await redis.rPush(`${socketKey}${user._id}`, clientId);
 
     if(existingSockets === 0) {
       await sendPresence(socket.userId, "online");
@@ -75,11 +75,11 @@ export function socketConnection() {
     socket.on('close', async (code, reason) => {
       console.log("WEBSOCKET CLOSED: ", code, reason.buffer);
       onlineClients.delete(clientId);
-      await redis.lRem(`${socketKey}${decoded._id}`, 0, clientId);
-      const socketCount = await redis.lLen(`${socketKey}${decoded._id}`);
+      await redis.lRem(`${socketKey}${user._id}`, 0, clientId);
+      const socketCount = await redis.lLen(`${socketKey}${user._id}`);
 
       if (socketCount === 0) {
-        await sendPresence(decoded._id, "offline", new Date().toISOString());
+        await sendPresence(user._id, "offline", new Date().toISOString());
       }
     })
   })
