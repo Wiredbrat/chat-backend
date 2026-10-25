@@ -12,7 +12,7 @@ import chatRouter from "./route/chatRoute.js";
 import "./worker/chatWorker.js";
 import { ws } from "./socketServer.js";
 import jwt from "jsonwebtoken";
-import { parseCookie } from 'cookie';
+import { parseCookie } from "cookie";
 import http from "http";
 
 configDotenv();
@@ -60,6 +60,7 @@ server.on("upgrade", (request, socket, head) => {
   const origin = request.headers.origin;
 
   if (!origin || origin !== process.env.FRONTEND_URL) {
+    console.log("WebSocket rejected: origin mismatch");
     socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
     socket.destroy();
     return;
@@ -70,6 +71,7 @@ server.on("upgrade", (request, socket, head) => {
     const token = cookies.accessToken;
 
     if (!token) {
+      console.log("WebSocket rejected: accessToken cookie missing");
       socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
       socket.destroy();
       return;
@@ -83,7 +85,8 @@ server.on("upgrade", (request, socket, head) => {
       websocket.userId = decoded._id;
       ws.emit("connection", websocket, request);
     });
-  } catch {
+  } catch (error) {
+    console.error("WebSocket authentication failed:", error.message);
     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
     socket.destroy();
   }
@@ -95,8 +98,8 @@ socketConnection();
 (async function startServer() {
   try {
     await connectDB();
-    const address = server.address();
     server.listen(PORT, () => {
+      const address = server.address();
       console.log(`server is running on`, address);
     });
   } catch (error) {
