@@ -103,16 +103,20 @@ export async function loginUser(req, res) {
     }
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: !process.env.DEVELOPEMENT,
-      sameSite: process.env.DEVELOPEMENT ? "lax" : "none",
+      // secure: !process.env.DEVELOPEMENT,
+      // sameSite: process.env.DEVELOPEMENT ? "lax" : "none",
+      secure: true,
+      sameSite: "none",
       // maxAge: 2 * 24 * 60 * 60 * 1000
       maxAge: 15 * 60 * 1000
     });
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: !process.env.DEVELOPEMENT,
-      sameSite: process.env.DEVELOPEMENT ? "lax" : "none",
+      // secure: !process.env.DEVELOPEMENT,
+      // sameSite: process.env.DEVELOPEMENT ? "lax" : "none",
+      secure: true,
+      sameSite: "none",
       maxAge: 15 * 24 * 60 * 60 * 1000
     });
 

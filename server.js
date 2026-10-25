@@ -67,8 +67,9 @@ server.on("upgrade", (request, socket, head) => {
   }
 
   try {
-    const cookies = parseCookie(request.headers.cookie || "");
-    const token = cookies.accessToken;
+    const cookies = parseCookie(request?.headers?.cookie || "");
+    const token = cookies?.accessToken;
+    // console.log(token);
 
     if (!token) {
       console.log("WebSocket rejected: accessToken cookie missing");
